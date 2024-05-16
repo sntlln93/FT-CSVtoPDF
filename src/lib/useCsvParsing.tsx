@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import Papa from "papaparse";
-import { Row } from "./types";
+import { CuratedRow, Row } from "./types";
 
 export function useCsvParsing() {
   const [file, setFile] = useState<File>();
@@ -9,7 +9,7 @@ export function useCsvParsing() {
   const [images, setImages] = useState<FileList>();
   const [showPreview, setShowPreview] = useState(false);
 
-  const [curated, setCurated] = useState<Row[]>([]);
+  const [curated, setCurated] = useState<CuratedRow[]>([]);
 
   const handleImages = ({ target }: ChangeEvent<HTMLInputElement>) => {
     if (target.files) {
@@ -23,25 +23,34 @@ export function useCsvParsing() {
     }
   }
 
-  function handleGenerate() {
+  async function handleGenerate() {
     if (rows && images) {
       setIsLoading(true);
       setShowPreview(true);
 
-      const processed = Array.from(images).map((image) => {
-        const row = rows.find((row) => row.orden == image.name.split(".")[0]);
-        if (!row) {
-          return {
-            ...rows[0],
-            orden: "0",
-            nombre: "Grupal",
-            foto: window.URL.createObjectURL(image),
-          };
-        }
-        return { ...row, foto: window.URL.createObjectURL(image) };
-      });
-
-      setCurated(processed);
+      const processed = await Promise.all(
+        Array.from(images).map(async (image) => {
+          const row = rows.find((row) => row.orden == image.name.split(".")[0]);
+          if (!row) {
+            return;
+          }
+          const imageUrl = window.URL.createObjectURL(image);
+          const img = new Image();
+          img.src = imageUrl;
+          return new Promise((resolve) => {
+            img.onload = () => {
+              const orientation =
+                img.width > img.height ? "landscape" : "portrait";
+              resolve({ ...row, foto: imageUrl, orientation: orientation });
+            };
+          });
+        })
+      );
+      const newCurated = processed.filter(
+        (r): r is CuratedRow => r !== undefined
+      );
+      console.log({ processed, newCurated });
+      setCurated(newCurated);
       setIsLoading(false);
     }
   }

@@ -8,12 +8,17 @@ import { Printer } from "lucide-react";
 type FormProps = { hook: Hook };
 
 export function Preview({ hook }: FormProps) {
-  const { curated } = hook;
+  const { curated, isLoading } = hook;
   const contentToPrint = useRef<HTMLDivElement>(null);
+
   const handlePrint = useReactToPrint({
-    documentTitle: curated[0].escuela,
+    documentTitle: isLoading ? "" : curated[0].escuela,
     removeAfterPrint: true,
   });
+
+  if (isLoading) {
+    return <div>Cargando</div>;
+  }
 
   return (
     <>

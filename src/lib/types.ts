@@ -5,3 +5,7 @@ export type Row = {
   nombre: string;
   foto: string;
 };
+
+export type CuratedRow = Row & {
+  orientation: "landscape" | "portrait";
+};
