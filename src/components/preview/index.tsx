@@ -12,12 +12,20 @@ export function Preview({ hook }: FormProps) {
   const contentToPrint = useRef<HTMLDivElement>(null);
 
   const handlePrint = useReactToPrint({
-    documentTitle: isLoading ? "" : curated[0].escuela,
+    documentTitle: curated[0]?.escuela ?? "",
     removeAfterPrint: true,
   });
 
   if (isLoading) {
     return <div>Cargando</div>;
+  }
+
+  if (!curated.length) {
+    return (
+      <div>
+        No se encontraron fotos que coincidan con la columna "Orden" del CSV.
+      </div>
+    );
   }
 
   return (

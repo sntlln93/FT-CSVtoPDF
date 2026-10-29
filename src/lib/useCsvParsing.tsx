@@ -2,6 +2,39 @@ import { ChangeEvent, useEffect, useState } from "react";
 import Papa from "papaparse";
 import { CuratedRow, Row } from "./types";
 
+const COLUMNS: (keyof Row)[] = ["escuela", "division", "orden", "nombre"];
+
+const HEADER_ALIASES: Record<string, keyof Row> = {
+  escuela: "escuela",
+  division: "division",
+  curso: "division",
+  sala: "division",
+  seno: "division",
+  orden: "orden",
+  nombre: "nombre",
+};
+
+// Normaliza el encabezado (minúsculas, sin acentos ni caracteres raros) y lo
+// mapea a una columna conocida. Si no se reconoce, se usa la posición.
+function normalizeHeader(header: string, index: number) {
+  const key = header
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+  return HEADER_ALIASES[key] ?? COLUMNS[index] ?? header;
+}
+
+// Excel en español suele exportar en Windows-1252 en vez de UTF-8.
+async function readFileText(file: File) {
+  const buffer = await file.arrayBuffer();
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    return new TextDecoder("windows-1252").decode(buffer);
+  }
+}
+
 export function useCsvParsing() {
   const [file, setFile] = useState<File>();
   const [rows, setRows] = useState<Row[]>();
@@ -57,16 +90,17 @@ export function useCsvParsing() {
 
   useEffect(() => {
     if (file) {
-      Papa.parse<Row>(file, {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.errors.length) {
-            console.error("Errors while parsing:", results.errors);
-          }
-          setRows(results.data);
-        },
+      readFileText(file).then((text) => {
+        const results = Papa.parse<Row>(text, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          transformHeader: normalizeHeader,
+        });
+        if (results.errors.length) {
+          console.error("Errors while parsing:", results.errors);
+        }
+        setRows(results.data);
       });
     }
   }, [file]);
